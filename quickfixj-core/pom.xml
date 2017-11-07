@@ -137,6 +137,9 @@
 				<directory>../quickfixj-messages/quickfixj-messages-fix42/src/main/resources</directory>
 			</resource>
 			<resource>
+				<directory>../quickfixj-messages/quickfixj-messages-fix42tt/src/main/resources</directory>
+			</resource>
+			<resource>
 				<directory>../quickfixj-messages/quickfixj-messages-fix41/src/main/resources</directory>
 			</resource>
 			<resource>
@@ -174,6 +177,9 @@
 			</testResource>
 			<testResource>
 				<directory>../quickfixj-messages/quickfixj-messages-fix42/src/main/resources</directory>
+			</testResource>
+			<testResource>
+				<directory>../quickfixj-messages/quickfixj-messages-fix42tt/src/main/resources</directory>
 			</testResource>
 			<testResource>
 				<directory>../quickfixj-messages/quickfixj-messages-fix41/src/main/resources</directory>
@@ -252,6 +258,18 @@
                             <decimal>${generator.decimal}</decimal>
                         </configuration>
                     </execution>
+					<execution>
+						<id>fix42tt</id>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<dictFile>../quickfixj-messages/quickfixj-messages-fix42tt/src/main/resources/FIX42TT.xml</dictFile>
+							<packaging>quickfix.fix42tt</packaging>
+							<fieldPackage>quickfix.field</fieldPackage>
+							<decimal>${generator.decimal}</decimal>
+						</configuration>
+					</execution>
                     <execution>
                         <id>fix41</id>
                         <goals>
@@ -346,6 +364,7 @@
                             quickfix.fix40;resolution:=optional,
                             quickfix.fix41;resolution:=optional,
                             quickfix.fix42;resolution:=optional,
+							quickfix.fix42tt;resolution:=optional,
                             quickfix.fix43;resolution:=optional,
                             quickfix.fix44;resolution:=optional,
                             quickfix.fix50;resolution:=optional,

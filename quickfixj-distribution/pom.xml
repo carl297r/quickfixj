@@ -101,6 +101,11 @@
 		</dependency>
 		<dependency>
 			<groupId>org.quickfixj</groupId>
+			<artifactId>quickfixj-messages-fix42tt</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.quickfixj</groupId>
 			<artifactId>quickfixj-messages-fix41</artifactId>
 			<version>${project.version}</version>
 		</dependency>
