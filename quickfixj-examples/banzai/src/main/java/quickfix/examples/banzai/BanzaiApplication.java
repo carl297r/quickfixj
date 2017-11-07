@@ -19,6 +19,8 @@
 
 package quickfix.examples.banzai;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import quickfix.Application;
 import quickfix.DefaultMessageFactory;
 import quickfix.DoNotSend;
@@ -32,37 +34,7 @@ import quickfix.Session;
 import quickfix.SessionID;
 import quickfix.SessionNotFound;
 import quickfix.UnsupportedMessageType;
-import quickfix.field.AvgPx;
-import quickfix.field.BeginString;
-import quickfix.field.BusinessRejectReason;
-import quickfix.field.ClOrdID;
-import quickfix.field.CumQty;
-import quickfix.field.CxlType;
-import quickfix.field.DeliverToCompID;
-import quickfix.field.ExecID;
-import quickfix.field.HandlInst;
-import quickfix.field.LastPx;
-import quickfix.field.LastShares;
-import quickfix.field.LeavesQty;
-import quickfix.field.LocateReqd;
-import quickfix.field.MsgSeqNum;
-import quickfix.field.MsgType;
-import quickfix.field.OrdStatus;
-import quickfix.field.OrdType;
-import quickfix.field.OrderQty;
-import quickfix.field.OrigClOrdID;
-import quickfix.field.Price;
-import quickfix.field.RefMsgType;
-import quickfix.field.RefSeqNum;
-import quickfix.field.SenderCompID;
-import quickfix.field.SessionRejectReason;
-import quickfix.field.Side;
-import quickfix.field.StopPx;
-import quickfix.field.Symbol;
-import quickfix.field.TargetCompID;
-import quickfix.field.Text;
-import quickfix.field.TimeInForce;
-import quickfix.field.TransactTime;
+import quickfix.field.*;
 
 import javax.swing.*;
 import java.math.BigDecimal;
@@ -72,6 +44,9 @@ import java.util.Observable;
 import java.util.Observer;
 
 public class BanzaiApplication implements Application {
+    private static final Logger log = LoggerFactory.getLogger(BanzaiApplication.class);
+    private final String m_password = "";
+
     private final DefaultMessageFactory messageFactory = new DefaultMessageFactory();
     private OrderTableModel orderTableModel = null;
     private ExecutionTableModel executionTableModel = null;
@@ -103,6 +78,22 @@ public class BanzaiApplication implements Application {
     }
 
     public void toAdmin(quickfix.Message message, SessionID sessionID) {
+
+        MsgType msgType = new MsgType();
+
+        try {
+            message.getHeader().getField(msgType);
+
+            if(msgType.getValue() == MsgType.LOGON)
+            {
+                message.setField(new quickfix.field.RawData(this.m_password));
+                message.setField(new quickfix.field.MsgSeqNum(1));
+                message.setField(new quickfix.field.ResetSeqNumFlag(true));
+            }
+        } catch (FieldNotFound e) {
+            log.error("Can't find MsgType field:" + e.getMessage());
+        }
+
     }
 
     public void toApp(quickfix.Message message, SessionID sessionID) throws DoNotSend {
@@ -144,6 +135,10 @@ public class BanzaiApplication implements Application {
                         executionReport(message, sessionID);
                     } else if (message.getHeader().getField(msgType).valueEquals("9")) {
                         cancelReject(message, sessionID);
+                    } else if (message.getHeader().getField(msgType).valueEquals("B")) {
+                        log.info("Message type B (News?):" + message.toString());
+                    } else if (message.getHeader().getField(msgType).valueEquals("j")) {
+                        log.info("Rejected message:" + message.toString());
                     } else {
                         sendBusinessReject(message, BusinessRejectReason.UNSUPPORTED_MESSAGE_TYPE,
                                 "Unsupported Message Type");
@@ -309,7 +304,7 @@ public class BanzaiApplication implements Application {
                 send41(order);
                 break;
             case FixVersions.BEGINSTRING_FIX42:
-                send42(order);
+                send42tt(order);
                 break;
             case FixVersions.BEGINSTRING_FIX43:
                 send43(order);
@@ -346,6 +341,26 @@ public class BanzaiApplication implements Application {
                 new ClOrdID(order.getID()), new HandlInst('1'), new Symbol(order.getSymbol()),
                 sideToFIXSide(order.getSide()), new TransactTime(), typeToFIXType(order.getType()));
         newOrderSingle.set(new OrderQty(order.getQuantity()));
+
+        send(populateOrder(order, newOrderSingle), order.getSessionID());
+    }
+
+    public void send42tt(Order order) {
+        quickfix.fix42tt.NewOrderSingle newOrderSingle = new quickfix.fix42tt.NewOrderSingle(
+                new ClOrdID(order.getID()),
+                // FixMe: CL - Exchange should come from order
+                new SecurityExchange("CME"),
+                //new Account("2052"),
+                new Account("clivermore"),
+                new OrderQty(order.getQuantity()),
+                sideToFIXSide(order.getSide()),
+                typeToFIXType(order.getType())
+        );
+        //newOrderSingle.set(new OrderQty(order.getQuantity()));
+        newOrderSingle.set(new SecurityType("FUT"));
+        newOrderSingle.set(new Symbol(order.getSymbol()));
+        newOrderSingle.set(new SecurityID("2771194191319558797"));
+        newOrderSingle.getHeader().setField(new OnBehalfOfSubID("CLivermore"));
 
         send(populateOrder(order, newOrderSingle), order.getSessionID());
     }
@@ -411,7 +426,7 @@ public class BanzaiApplication implements Application {
                 cancel41(order);
                 break;
             case "FIX.4.2":
-                cancel42(order);
+                cancel42tt(order);
                 break;
         }
     }
@@ -449,6 +464,19 @@ public class BanzaiApplication implements Application {
         send(message, order.getSessionID());
     }
 
+    public void cancel42tt(Order order) {
+        String id = order.generateID();
+        quickfix.fix42tt.OrderCancelRequest message = new quickfix.fix42tt.OrderCancelRequest(new ClOrdID(id));
+        message.setField(new OrigClOrdID(order.getID()));
+//                new OrigClOrdID(order.getID()));
+//        , , new Symbol(order.getSymbol()),
+//                sideToFIXSide(order.getSide()), new TransactTime());
+//        message.setField(new OrderQty(order.getQuantity()));
+
+        orderTableModel.addID(order, id);
+        send(message, order.getSessionID());
+    }
+
     public void replace(Order order, Order newOrder) {
         String beginString = order.getSessionID().getBeginString();
         switch (beginString) {
@@ -459,7 +487,7 @@ public class BanzaiApplication implements Application {
                 replace41(order, newOrder);
                 break;
             case "FIX.4.2":
-                replace42(order, newOrder);
+                replace42tt(order, newOrder);
                 break;
         }
     }
@@ -489,6 +517,20 @@ public class BanzaiApplication implements Application {
                 new OrigClOrdID(order.getID()), new ClOrdID(newOrder.getID()), new HandlInst('1'),
                 new Symbol(order.getSymbol()), sideToFIXSide(order.getSide()), new TransactTime(),
                 typeToFIXType(order.getType()));
+
+        orderTableModel.addID(order, newOrder.getID());
+        send(populateCancelReplace(order, newOrder, message), order.getSessionID());
+    }
+
+    public void replace42tt(Order order, Order newOrder) {
+        quickfix.fix42tt.OrderCancelReplaceRequest message = new quickfix.fix42tt.OrderCancelReplaceRequest(
+                new ClOrdID(newOrder.getID()),
+                new Account("clivermore"),
+                new OrderQty(order.getQuantity()),
+                sideToFIXSide(order.getSide()),
+                typeToFIXType(order.getType()));
+
+        message.setField(new OrigClOrdID(order.getID()));
 
         orderTableModel.addID(order, newOrder.getID());
         send(populateCancelReplace(order, newOrder, message), order.getSessionID());
