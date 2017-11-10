@@ -23,6 +23,7 @@ import quickfix.SessionID;
 
 public class Order implements Cloneable {
     private SessionID sessionID = null;
+    private String account = null;
     private String symbol = null;
     private int quantity = 0;
     private int open = 0;
@@ -70,6 +71,12 @@ public class Order implements Cloneable {
     public void setSessionID(SessionID sessionID) {
         this.sessionID = sessionID;
     }
+
+    public void setAccount(String account) {
+        this.account = account;
+    }
+
+    public String getAccount() { return account; }
 
     public String getSymbol() {
         return symbol;

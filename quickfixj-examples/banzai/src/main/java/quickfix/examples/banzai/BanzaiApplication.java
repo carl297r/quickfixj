@@ -81,6 +81,9 @@ public class BanzaiApplication implements Application {
             {
                 String password = sessionSettings.getString(sessionID, sessionPasswordKey);
                 message.setField(new quickfix.field.RawData(password));
+
+//                message.setField(new quickfix.field.MsgSeqNum(1));
+//                message.setField(new quickfix.field.ResetSeqNumFlag(true));
             }
         } catch (FieldNotFound e) {
             log.error("Can't find MsgType field:" + e.getMessage());
@@ -91,6 +94,7 @@ public class BanzaiApplication implements Application {
     }
 
     public void toApp(quickfix.Message message, SessionID sessionID) throws DoNotSend {
+        message.getHeader().setField(new OnBehalfOfSubID("CLivermore"));
     }
 
     public void fromAdmin(quickfix.Message message, SessionID sessionID) throws FieldNotFound,
@@ -132,7 +136,7 @@ public class BanzaiApplication implements Application {
                     } else if (message.getHeader().getField(msgType).valueEquals("B")) {
                         log.info("Message type B (News?):" + message.toString());
                     } else if (message.getHeader().getField(msgType).valueEquals("j")) {
-                        log.info("Rejected message:" + message.toString());
+                        log.warn("Rejected message:" + message.toString());
                     } else {
                         sendBusinessReject(message, BusinessRejectReason.UNSUPPORTED_MESSAGE_TYPE,
                                 "Unsupported Message Type");
@@ -344,8 +348,8 @@ public class BanzaiApplication implements Application {
                 new ClOrdID(order.getID()),
                 // FixMe: CL - Exchange should come from order
                 new SecurityExchange("CME"),
-                //new Account("2052"),
-                new Account("clivermore"),
+                //new Account("clivermore"),
+                new Account(order.getAccount()),
                 new OrderQty(order.getQuantity()),
                 sideToFIXSide(order.getSide()),
                 typeToFIXType(order.getType())
@@ -353,8 +357,9 @@ public class BanzaiApplication implements Application {
         //newOrderSingle.set(new OrderQty(order.getQuantity()));
         newOrderSingle.set(new SecurityType("FUT"));
         newOrderSingle.set(new Symbol(order.getSymbol()));
-        newOrderSingle.set(new SecurityID("2771194191319558797"));
-        newOrderSingle.getHeader().setField(new OnBehalfOfSubID("CLivermore"));
+        newOrderSingle.set(new MaturityMonthYear("201712"));
+//        newOrderSingle.set(new SecurityID("2771194191319558797"));
+//        newOrderSingle.getHeader().setField(new OnBehalfOfSubID("CLivermore"));
 
         send(populateOrder(order, newOrderSingle), order.getSessionID());
     }
