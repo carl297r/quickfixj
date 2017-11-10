@@ -127,7 +127,13 @@ public class OrderEntryPanel extends JPanel implements Observer {
         int y = 0;
 
         add(new JLabel("Account"), x, y);
-        add(new JLabel("Symbol"), ++x, y);
+        constraints.ipadx = 30;
+
+        accountTextField.setName("AccountTextField");
+        add(accountTextField, x = 0, ++y);
+        constraints.ipadx = 0;
+
+        add(new JLabel("Symbol"), x = 0, ++y);
         add(new JLabel("Quantity"), ++x, y);
         add(new JLabel("Side"), ++x, y);
         add(new JLabel("Type"), ++x, y);
@@ -138,11 +144,12 @@ public class OrderEntryPanel extends JPanel implements Observer {
         add(new JLabel("TIF"), ++x, y);
         constraints.ipadx = 30;
 
-        accountTextField.setName("AccountTextField");
-        add(accountTextField, x = 0, ++y);
-        constraints.ipadx = 0;
+//        accountTextField.setName("AccountTextField");
+//        add(accountTextField, x = 0, ++y);
+//        constraints.ipadx = 0;
         symbolTextField.setName("SymbolTextField");
-        add(symbolTextField, ++x, y);
+        add(symbolTextField, x = 0, ++y);
+        constraints.ipadx = 0;
         quantityTextField.setName("QuantityTextField");
         add(quantityTextField, ++x, y);
         sideComboBox.setName("SideComboBox");
