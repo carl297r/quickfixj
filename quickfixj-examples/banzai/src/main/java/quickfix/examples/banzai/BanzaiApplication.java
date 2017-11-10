@@ -21,19 +21,7 @@ package quickfix.examples.banzai;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import quickfix.Application;
-import quickfix.DefaultMessageFactory;
-import quickfix.DoNotSend;
-import quickfix.FieldNotFound;
-import quickfix.FixVersions;
-import quickfix.IncorrectDataFormat;
-import quickfix.IncorrectTagValue;
-import quickfix.Message;
-import quickfix.RejectLogon;
-import quickfix.Session;
-import quickfix.SessionID;
-import quickfix.SessionNotFound;
-import quickfix.UnsupportedMessageType;
+import quickfix.*;
 import quickfix.field.*;
 
 import javax.swing.*;
@@ -45,7 +33,8 @@ import java.util.Observer;
 
 public class BanzaiApplication implements Application {
     private static final Logger log = LoggerFactory.getLogger(BanzaiApplication.class);
-    private final String m_password = "";
+    private static final String sessionPasswordKey = "SessionPassword";
+    private SessionSettings sessionSettings = null;
 
     private final DefaultMessageFactory messageFactory = new DefaultMessageFactory();
     private OrderTableModel orderTableModel = null;
@@ -60,8 +49,12 @@ public class BanzaiApplication implements Application {
     static private final TwoWayMap tifMap = new TwoWayMap();
     static private final HashMap<SessionID, HashSet<ExecID>> execIDs = new HashMap<>();
 
-    public BanzaiApplication(OrderTableModel orderTableModel,
+    public BanzaiApplication(
+            SessionSettings sessionSettings,
+            OrderTableModel orderTableModel,
             ExecutionTableModel executionTableModel) {
+
+        this.sessionSettings = sessionSettings;
         this.orderTableModel = orderTableModel;
         this.executionTableModel = executionTableModel;
     }
@@ -84,14 +77,15 @@ public class BanzaiApplication implements Application {
         try {
             message.getHeader().getField(msgType);
 
-            if(msgType.getValue() == MsgType.LOGON)
+            if(msgType.getValue() == MsgType.LOGON && sessionSettings.isSetting(sessionID, sessionPasswordKey))
             {
-                message.setField(new quickfix.field.RawData(this.m_password));
-                message.setField(new quickfix.field.MsgSeqNum(1));
-                message.setField(new quickfix.field.ResetSeqNumFlag(true));
+                String password = sessionSettings.getString(sessionID, sessionPasswordKey);
+                message.setField(new quickfix.field.RawData(password));
             }
         } catch (FieldNotFound e) {
             log.error("Can't find MsgType field:" + e.getMessage());
+        } catch (FieldConvertError | ConfigError e) {
+            log.error("Can't get password:" + e.getMessage());
         }
 
     }
