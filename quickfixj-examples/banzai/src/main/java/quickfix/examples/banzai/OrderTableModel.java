@@ -34,6 +34,10 @@ public class OrderTableModel extends AbstractTableModel {
     private final static int STOPPRICE = 7;
     private final static int AVGPX = 8;
     private final static int TARGET = 9;
+    private final static int ID = 10;
+    private final static int ORIGID = 11;
+    private final static int THEIRID = 12;
+    private final static int TTCLID = 13;
 
     private final HashMap<Integer, Order> rowToOrder;
     private final HashMap<String, Integer> idToRow;
@@ -49,7 +53,7 @@ public class OrderTableModel extends AbstractTableModel {
         headers = new String[]
                   {"Symbol", "Quantity", "Open", "Executed",
                    "Side", "Type", "Limit", "Stop", "AvgPx",
-                   "Target"};
+                   "Target", "ID", "Orig ID", "Their ID", "TT Cl ID"};
     }
 
     public boolean isCellEditable(int rowIndex, int columnIndex) {
@@ -71,6 +75,7 @@ public class OrderTableModel extends AbstractTableModel {
         if (!id.equals(order.getID())) {
             String originalID = order.getID();
             order.setID(id);
+            // order.setOriginalID(originalID);
             replaceOrder(order, originalID);
             return;
         }
@@ -127,26 +132,34 @@ public class OrderTableModel extends AbstractTableModel {
     public Object getValueAt(int rowIndex, int columnIndex) {
         Order order = rowToOrder.get(rowIndex);
         switch (columnIndex) {
-        case SYMBOL:
-            return order.getSymbol();
-        case QUANTITY:
-            return order.getQuantity();
-        case OPEN:
-            return order.getOpen();
-        case EXECUTED:
-            return order.getExecuted();
-        case SIDE:
-            return order.getSide();
-        case TYPE:
-            return order.getType();
-        case LIMITPRICE:
-            return order.getLimit();
-        case STOPPRICE:
-            return order.getStop();
-        case AVGPX:
-            return order.getAvgPx();
-        case TARGET:
-            return order.getSessionID().getTargetCompID();
+            case SYMBOL:
+                return order.getSymbol();
+            case QUANTITY:
+                return order.getQuantity();
+            case OPEN:
+                return order.getOpen();
+            case EXECUTED:
+                return order.getExecuted();
+            case SIDE:
+                return order.getSide();
+            case TYPE:
+                return order.getType();
+            case LIMITPRICE:
+                return order.getLimit();
+            case STOPPRICE:
+                return order.getStop();
+            case AVGPX:
+                return order.getAvgPx();
+            case TARGET:
+                return order.getSessionID().getTargetCompID();
+            case ID:
+                return order.getID();
+            case ORIGID:
+                return order.getOriginalID();
+            case THEIRID:
+                return order.getTheirID();
+            case TTCLID:
+                return order.getTTClID();
         }
         return "";
     }

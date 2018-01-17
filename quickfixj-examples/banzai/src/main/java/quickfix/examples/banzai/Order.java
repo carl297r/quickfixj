@@ -41,6 +41,8 @@ public class Order implements Cloneable {
     private String ID = null;
     private String originalID = null;
     private static int nextID = 1;
+    private String theirID = null;
+    private String ttClID = null;
 
     public Order() {
         ID = generateID();
@@ -208,15 +210,20 @@ public class Order implements Cloneable {
         this.ID = ID;
     }
 
-    public String getID() {
-        return ID;
-    }
+    public String getID() { return ID; }
 
-    public void setOriginalID(String originalID) {
-        this.originalID = originalID;
-    }
+    public void setOriginalID(String originalID) { this.originalID = originalID; }
 
     public String getOriginalID() {
         return originalID;
     }
+
+    public void setTheirID(String theirID) { this.theirID = theirID; }
+
+    public String getTheirID() { return theirID; }
+
+    public void setTTClID(String ttID) { this.ttClID = ttID; }
+
+    public String getTTClID() { return ttClID; }
+
 }
