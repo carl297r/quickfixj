@@ -21,31 +21,19 @@ package quickfix.examples.banzai;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import quickfix.Application;
-import quickfix.DefaultMessageFactory;
-import quickfix.DoNotSend;
-import quickfix.FieldNotFound;
-import quickfix.FixVersions;
-import quickfix.IncorrectDataFormat;
-import quickfix.IncorrectTagValue;
-import quickfix.Message;
-import quickfix.RejectLogon;
-import quickfix.Session;
-import quickfix.SessionID;
-import quickfix.SessionNotFound;
-import quickfix.UnsupportedMessageType;
+import quickfix.*;
 import quickfix.field.*;
+import quickfix.fix42tt.MarketDataRequest;
+import quickfix.fix42tt.MarketDataSnapshot;
 
 import javax.swing.*;
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Observable;
-import java.util.Observer;
+import java.util.*;
 
 public class BanzaiApplication implements Application {
     private static final Logger log = LoggerFactory.getLogger(BanzaiApplication.class);
-    private final String m_password = "";
+    private static final String sessionPasswordKey = "SessionPassword";
+    private SessionSettings sessionSettings = null;
 
     private final DefaultMessageFactory messageFactory = new DefaultMessageFactory();
     private OrderTableModel orderTableModel = null;
@@ -60,8 +48,12 @@ public class BanzaiApplication implements Application {
     static private final TwoWayMap tifMap = new TwoWayMap();
     static private final HashMap<SessionID, HashSet<ExecID>> execIDs = new HashMap<>();
 
-    public BanzaiApplication(OrderTableModel orderTableModel,
+    public BanzaiApplication(
+            SessionSettings sessionSettings,
+            OrderTableModel orderTableModel,
             ExecutionTableModel executionTableModel) {
+
+        this.sessionSettings = sessionSettings;
         this.orderTableModel = orderTableModel;
         this.executionTableModel = executionTableModel;
     }
@@ -84,19 +76,24 @@ public class BanzaiApplication implements Application {
         try {
             message.getHeader().getField(msgType);
 
-            if(msgType.getValue() == MsgType.LOGON)
+            if(msgType.getValue() == MsgType.LOGON && sessionSettings.isSetting(sessionID, sessionPasswordKey))
             {
-                message.setField(new quickfix.field.RawData(this.m_password));
-                message.setField(new quickfix.field.MsgSeqNum(1));
-                message.setField(new quickfix.field.ResetSeqNumFlag(true));
+                String password = sessionSettings.getString(sessionID, sessionPasswordKey);
+                message.setField(new quickfix.field.RawData(password));
+
+//                message.setField(new quickfix.field.MsgSeqNum(1));
+//                message.setField(new quickfix.field.ResetSeqNumFlag(true));
             }
         } catch (FieldNotFound e) {
             log.error("Can't find MsgType field:" + e.getMessage());
+        } catch (FieldConvertError | ConfigError e) {
+            log.error("Can't get password:" + e.getMessage());
         }
 
     }
 
     public void toApp(quickfix.Message message, SessionID sessionID) throws DoNotSend {
+        message.getHeader().setField(new OnBehalfOfSubID("CLivermore"));
     }
 
     public void fromAdmin(quickfix.Message message, SessionID sessionID) throws FieldNotFound,
@@ -136,9 +133,17 @@ public class BanzaiApplication implements Application {
                     } else if (message.getHeader().getField(msgType).valueEquals("9")) {
                         cancelReject(message, sessionID);
                     } else if (message.getHeader().getField(msgType).valueEquals("B")) {
-                        log.info("Message type B (News?):" + message.toString());
+                        log.info("News message :" + message.toString());
                     } else if (message.getHeader().getField(msgType).valueEquals("j")) {
-                        log.info("Rejected message:" + message.toString());
+                        log.warn("Rejected message: " + message.toString());
+//                    } else if (message.getHeader().getField(msgType).valueEquals("W")){
+//                        log.info("Price Full: " + message.toString());
+//                    } else if (message.getHeader().getField(msgType).valueEquals("X")) {
+//                        log.info("Price Incremental: " + message.toString());
+                    } else if (message.getHeader().getField(msgType).valueEquals("W")) {
+                        marketDataFull(message, sessionID);
+                    } else if (message.getHeader().getField(msgType).valueEquals("X")) {
+                        marketDataIncremental(message, sessionID);
                     } else {
                         sendBusinessReject(message, BusinessRejectReason.UNSUPPORTED_MESSAGE_TYPE,
                                 "Unsupported Message Type");
@@ -197,6 +202,13 @@ public class BanzaiApplication implements Application {
         if (order == null) {
             return;
         }
+
+        if (message.isSetField(new OrderID())) order.setTheirID(message.getField(new OrderID()).getValue());
+        if (message.isSetField(new TTClOrdID())) order.setTTClID(message.getField(new TTClOrdID()).getValue());
+        // if (message.isSetField(new OrigClOrdID())) order.setOriginalID(message.getField(new OrigClOrdID()).getValue());
+
+        if (message.isSetField(new OrderQty())) order.setQuantity((int) Math.round(message.getField(new OrderQty()).getValue()));
+        if (message.isSetField(new Price())) order.setLimit(message.getField(new Price()).getValue());
 
         BigDecimal fillSize;
 
@@ -294,6 +306,74 @@ public class BanzaiApplication implements Application {
         }
     }
 
+    private void marketDataFull(Message message, SessionID sessionID) throws FieldNotFound {
+        MarketDataSnapshot.NoMDEntries mdEntriesGroup = new MarketDataSnapshot.NoMDEntries();
+//        Group mDEntry = message.getGroup(1, mdEntriesGroup);
+//        log.info("MDReqID: " + message.getField(new MDReqID()).getValue() +
+//                " MarketData Type: " + mDEntry.getField(new MDEntryType()).getValue() +
+//                " Price: " + mDEntry.getField(new MDEntryPx()).getValue() +
+//                " Size: " + mDEntry.getField(new MDEntrySize()).getValue() +
+////                " Orders: " + mDEntry.getField(new NumberOfOrders()).getValue() +
+//                " Position " + mDEntry.getField(new MDEntryPositionNo()).getValue());
+
+        final List<Group> mdEntries = message.getGroups(mdEntriesGroup.getFieldTag());
+        for (Group mDEntry : mdEntries) {
+            log.info("MDReqID: " + message.getField(new MDReqID()).getValue() +
+                    " MarketData Type: " + mDEntry.getField(new MDEntryType()).getValue() +
+                    " Price: " + mDEntry.getField(new MDEntryPx()).getValue() +
+                    " Size: " + mDEntry.getField(new MDEntrySize()).getValue() +
+                    " Orders: " + mDEntry.getField(new NumberOfOrders()).getValue() +
+                    " Position " + mDEntry.getField(new MDEntryPositionNo()).getValue());
+        }
+    }
+
+    private void marketDataIncremental(Message message, SessionID sessionID) throws FieldNotFound {
+        MarketDataSnapshot.NoMDEntries mdEntriesGroup = new MarketDataSnapshot.NoMDEntries();
+//        Group mDEntry = message.getGroup(1, mdEntriesGroup);
+//        log.info("MDReqID: " + message.getField(new MDReqID()).getValue() +
+//                " MarketData Type: " + mDEntry.getField(new MDEntryType()).getValue() +
+//                " Price: " + mDEntry.getField(new MDEntryPx()).getValue() +
+//                " Size: " + mDEntry.getField(new MDEntrySize()).getValue() +
+////                " Orders: " + mDEntry.getField(new NumberOfOrders()).getValue() +
+//                " Position " + mDEntry.getField(new MDEntryPositionNo()).getValue());
+        final List<Group> mdEntries = message.getGroups(mdEntriesGroup.getFieldTag());
+        for (Group mDEntry : mdEntries) {
+            log.info("MDReqID: " + message.getField(new MDReqID()).getValue() +
+                    " MarketData Type: " + mDEntry.getField(new MDEntryType()).getValue() +
+                    " Price: " + mDEntry.getField(new MDEntryPx()).getValue() +
+                    " Size: " + mDEntry.getField(new MDEntrySize()).getValue() +
+                    " Orders: " + mDEntry.getField(new NumberOfOrders()).getValue() +
+                    " Position " + mDEntry.getField(new MDEntryPositionNo()).getValue());
+        }
+    }
+
+    public void marketData(Order order) {
+        MarketDataRequest mDR = new MarketDataRequest(
+                new MDReqID("1"),
+                new SubscriptionRequestType(SubscriptionRequestType.SNAPSHOT_PLUS_UPDATES)
+        );
+        
+        mDR.set(new MarketDepth(10));
+        mDR.set(new AggregatedBook(true));
+        mDR.set(new MDUpdateType(MDUpdateType.INCREMENTAL_REFRESH));
+        mDR.set(new IncludeNumberOfOrders('Y'));
+
+        MarketDataRequest.NoMDEntryTypes noMDEntryTypes = new MarketDataRequest.NoMDEntryTypes();
+        noMDEntryTypes.set(new MDEntryType(MDEntryType.BID));
+        mDR.addGroup(noMDEntryTypes);
+        noMDEntryTypes.set(new MDEntryType(MDEntryType.OFFER));
+        mDR.addGroup(noMDEntryTypes);
+
+        MarketDataRequest.NoRelatedSym noRelatedSym = new MarketDataRequest.NoRelatedSym();
+        noRelatedSym.set(new SecurityExchange("CME"));
+        noRelatedSym.set(new SecurityType("FUT"));
+        noRelatedSym.set(new Symbol(order.getSymbol()));
+        noRelatedSym.set(new MaturityMonthYear("201801"));
+        mDR.addGroup(noRelatedSym);
+
+        send(mDR, order.getSessionID());
+    }
+
     public void send(Order order) {
         String beginString = order.getSessionID().getBeginString();
         switch (beginString) {
@@ -305,6 +385,7 @@ public class BanzaiApplication implements Application {
                 break;
             case FixVersions.BEGINSTRING_FIX42:
                 send42tt(order);
+//                marketData(order);
                 break;
             case FixVersions.BEGINSTRING_FIX43:
                 send43(order);
@@ -350,8 +431,8 @@ public class BanzaiApplication implements Application {
                 new ClOrdID(order.getID()),
                 // FixMe: CL - Exchange should come from order
                 new SecurityExchange("CME"),
-                //new Account("2052"),
-                new Account("clivermore"),
+                //new Account("clivermore"),
+                new Account(order.getAccount()),
                 new OrderQty(order.getQuantity()),
                 sideToFIXSide(order.getSide()),
                 typeToFIXType(order.getType())
@@ -359,8 +440,9 @@ public class BanzaiApplication implements Application {
         //newOrderSingle.set(new OrderQty(order.getQuantity()));
         newOrderSingle.set(new SecurityType("FUT"));
         newOrderSingle.set(new Symbol(order.getSymbol()));
-        newOrderSingle.set(new SecurityID("2771194191319558797"));
-        newOrderSingle.getHeader().setField(new OnBehalfOfSubID("CLivermore"));
+        newOrderSingle.set(new MaturityMonthYear("201802"));
+//        newOrderSingle.set(new SecurityID("2771194191319558797"));
+//        newOrderSingle.getHeader().setField(new OnBehalfOfSubID("CLivermore"));
 
         send(populateOrder(order, newOrderSingle), order.getSessionID());
     }
@@ -538,9 +620,9 @@ public class BanzaiApplication implements Application {
 
     Message populateCancelReplace(Order order, Order newOrder, quickfix.Message message) {
 
-        if (order.getQuantity() != newOrder.getQuantity())
+        //if (order.getQuantity() != newOrder.getQuantity())
             message.setField(new OrderQty(newOrder.getQuantity()));
-        if (!order.getLimit().equals(newOrder.getLimit()))
+        //if (!order.getLimit().equals(newOrder.getLimit()))
             message.setField(new Price(newOrder.getLimit()));
         return message;
     }

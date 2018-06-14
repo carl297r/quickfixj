@@ -53,12 +53,14 @@ import quickfix.examples.banzai.OrderTableModel;
 import quickfix.examples.banzai.OrderType;
 
 public class OrderEntryPanel extends JPanel implements Observer {
+    private boolean accountEntered = false;
     private boolean symbolEntered = false;
     private boolean quantityEntered = false;
     private boolean limitEntered = false;
     private boolean stopEntered = false;
     private boolean sessionEntered = false;
 
+    private final JTextField accountTextField = new JTextField();
     private final JTextField symbolTextField = new JTextField();
     private final IntegerNumberTextField quantityTextField = new IntegerNumberTextField();
 
@@ -91,6 +93,7 @@ public class OrderEntryPanel extends JPanel implements Observer {
         application.addLogonObserver(this);
 
         SubmitActivator activator = new SubmitActivator();
+        accountTextField.addKeyListener(activator);
         symbolTextField.addKeyListener(activator);
         quantityTextField.addKeyListener(activator);
         limitPriceTextField.addKeyListener(activator);
@@ -123,7 +126,14 @@ public class OrderEntryPanel extends JPanel implements Observer {
         int x = 0;
         int y = 0;
 
-        add(new JLabel("Symbol"), x, y);
+        add(new JLabel("Account"), x, y);
+        constraints.ipadx = 30;
+
+        accountTextField.setName("AccountTextField");
+        add(accountTextField, x = 0, ++y);
+        constraints.ipadx = 0;
+
+        add(new JLabel("Symbol"), x = 0, ++y);
         add(new JLabel("Quantity"), ++x, y);
         add(new JLabel("Side"), ++x, y);
         add(new JLabel("Type"), ++x, y);
@@ -134,6 +144,9 @@ public class OrderEntryPanel extends JPanel implements Observer {
         add(new JLabel("TIF"), ++x, y);
         constraints.ipadx = 30;
 
+//        accountTextField.setName("AccountTextField");
+//        add(accountTextField, x = 0, ++y);
+//        constraints.ipadx = 0;
         symbolTextField.setName("SymbolTextField");
         add(symbolTextField, x = 0, ++y);
         constraints.ipadx = 0;
@@ -182,7 +195,7 @@ public class OrderEntryPanel extends JPanel implements Observer {
 
     private void activateSubmit() {
         OrderType type = (OrderType) typeComboBox.getSelectedItem();
-        boolean activate = symbolEntered && quantityEntered && sessionEntered;
+        boolean activate = accountEntered && symbolEntered && quantityEntered && sessionEntered;
 
         if (type == OrderType.MARKET)
             submitButton.setEnabled(activate);
@@ -245,6 +258,7 @@ public class OrderEntryPanel extends JPanel implements Observer {
             order.setType((OrderType) typeComboBox.getSelectedItem());
             order.setTIF((OrderTIF) tifComboBox.getSelectedItem());
 
+            order.setAccount(accountTextField.getText());
             order.setSymbol(symbolTextField.getText());
             order.setQuantity(Integer.parseInt(quantityTextField.getText()));
             order.setOpen(order.getQuantity());
@@ -264,7 +278,9 @@ public class OrderEntryPanel extends JPanel implements Observer {
     private class SubmitActivator implements KeyListener, ItemListener {
         public void keyReleased(KeyEvent e) {
             Object obj = e.getSource();
-            if (obj == symbolTextField) {
+            if (obj == accountTextField) {
+                accountEntered = testField(obj);
+            } else if (obj == symbolTextField) {
                 symbolEntered = testField(obj);
             } else if (obj == quantityTextField) {
                 quantityEntered = testField(obj);

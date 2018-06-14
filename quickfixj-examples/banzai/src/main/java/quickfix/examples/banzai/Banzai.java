@@ -73,7 +73,7 @@ public class Banzai {
 
         OrderTableModel orderTableModel = new OrderTableModel();
         ExecutionTableModel executionTableModel = new ExecutionTableModel();
-        BanzaiApplication application = new BanzaiApplication(orderTableModel, executionTableModel);
+        BanzaiApplication application = new BanzaiApplication(settings, orderTableModel, executionTableModel);
         MessageStoreFactory messageStoreFactory = new FileStoreFactory(settings);
         LogFactory logFactory = new ScreenLogFactory(true, true, true, logHeartbeats);
         MessageFactory messageFactory = new DefaultMessageFactory();
