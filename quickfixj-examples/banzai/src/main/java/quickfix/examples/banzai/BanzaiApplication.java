@@ -352,7 +352,7 @@ public class BanzaiApplication implements Application {
                 new MDReqID("1"),
                 new SubscriptionRequestType(SubscriptionRequestType.SNAPSHOT_PLUS_UPDATES)
         );
-        
+
         mDR.set(new MarketDepth(10));
         mDR.set(new AggregatedBook(true));
         mDR.set(new MDUpdateType(MDUpdateType.INCREMENTAL_REFRESH));
