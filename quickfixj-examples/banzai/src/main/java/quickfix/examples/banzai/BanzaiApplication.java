@@ -368,7 +368,7 @@ public class BanzaiApplication implements Application {
         noRelatedSym.set(new SecurityExchange("CME"));
         noRelatedSym.set(new SecurityType("FUT"));
         noRelatedSym.set(new Symbol(order.getSymbol()));
-        noRelatedSym.set(new MaturityMonthYear("201801"));
+        noRelatedSym.set(new MaturityMonthYear("201812"));
         mDR.addGroup(noRelatedSym);
 
         send(mDR, order.getSessionID());
@@ -440,7 +440,7 @@ public class BanzaiApplication implements Application {
         //newOrderSingle.set(new OrderQty(order.getQuantity()));
         newOrderSingle.set(new SecurityType("FUT"));
         newOrderSingle.set(new Symbol(order.getSymbol()));
-        newOrderSingle.set(new MaturityMonthYear("201802"));
+        newOrderSingle.set(new MaturityMonthYear("201812"));
 //        newOrderSingle.set(new SecurityID("2771194191319558797"));
 //        newOrderSingle.getHeader().setField(new OnBehalfOfSubID("CLivermore"));
 
